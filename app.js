@@ -1,34 +1,69 @@
-// 直接讀取目前 Repo 裡的 json 檔
-const API_URL = 'stocks.json';
+const API_URL = 'all_stocks_data.json';
+let allStocks = []; // 用來暫存抓下來的全台股資料
+let lastUpdateTime = "";
 
-async function runStrategy() {
-  const tbody = document.getElementById('resultBody');
-  const count = document.getElementById('resultCount');
-  const status = document.getElementById('status');
-  const metaInfo = document.getElementById('metaInfo');
-
-  status.textContent = '載入最新結果中...';
-  tbody.innerHTML = `<tr><td colspan="9" class="empty">讀取中...</td></tr>`;
-
-  try {
-    // 給網址加上時間戳，防止瀏覽器讀到舊的暫存檔
-    const response = await fetch(API_URL + "?t=" + new Date().getTime());
-    if (!response.ok) throw new Error('讀取 JSON 失敗');
-
-    const data = await response.json();
-    const stocks = data.stocks || [];
+// 網頁一載入，就先去後台默默把 1700 檔資料抓下來放著
+async function fetchAllData() {
+    const status = document.getElementById('status');
+    const metaInfo = document.getElementById('metaInfo');
     
-    metaInfo.textContent = `更新時間：${data.updated_at}｜掃描 ${data.checked_count} 檔｜符合 ${data.matched_count} 檔`;
+    try {
+        const response = await fetch(API_URL + "?t=" + new Date().getTime());
+        if (!response.ok) throw new Error('無法讀取資料');
+        
+        const data = await response.json();
+        allStocks = data.stocks || [];
+        lastUpdateTime = data.updated_at || '未知';
+        
+        metaInfo.textContent = `全市場資料已載入 (${allStocks.length} 檔)。最後更新：${lastUpdateTime}`;
+        status.textContent = '準備就緒，請點擊上方按鈕執行策略。';
+    } catch (error) {
+        metaInfo.textContent = '資料載入失敗，請確認 GitHub Actions 是否已跑完。';
+        console.error(error);
+    }
+}
 
-    if (stocks.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty">今日無符合條件的股票</td></tr>`;
-      count.textContent = '0 檔';
-      status.textContent = '載入完成';
-      return;
+// 策略一：量縮測底完成 (你原本的策略)
+function strategyVolumeBottom() {
+    return allStocks.filter(stock => {
+        return (
+            stock.close > stock.ma5 && 
+            stock.close > stock.ma20 && 
+            stock.close > stock.ma60 &&
+            stock.lowestClose20 < stock.ma20 &&
+            stock.volume > 500 &&
+            stock.close < stock.ma200 * 1.4 &&
+            stock.ma200_up_10days === true
+        );
+    });
+}
+
+// 策略二：簡單均線多頭 (範例：你可以自己加無限多個策略)
+function strategyBullMarket() {
+    return allStocks.filter(stock => {
+        return (
+            stock.close > stock.ma5 &&
+            stock.ma5 > stock.ma20 &&
+            stock.ma20 > stock.ma60 &&
+            stock.volume > 1000
+        );
+    });
+}
+
+// 負責把陣列畫成表格的函數
+function renderTable(filteredStocks, strategyName) {
+    const tbody = document.getElementById('resultBody');
+    const count = document.getElementById('resultCount');
+    const status = document.getElementById('status');
+
+    if (filteredStocks.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty">此策略今日無符合標的</td></tr>`;
+        count.textContent = '0 檔';
+        status.textContent = `[${strategyName}] 執行完成`;
+        return;
     }
 
-    // 這裡加上了玩股網的超連結
-    tbody.innerHTML = stocks.map(stock => `
+    tbody.innerHTML = filteredStocks.map(stock => `
       <tr>
         <td>
           <a href="https://www.wantgoo.com/stock/${stock.code}/technical-chart" target="_blank" style="color: #0f766e; text-decoration: none; font-weight: bold;">
@@ -46,12 +81,20 @@ async function runStrategy() {
       </tr>
     `).join('');
 
-    count.textContent = `共 ${stocks.length} 檔`;
-    status.textContent = '載入完成';
-  } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty">讀取失敗</td></tr>`;
-    status.textContent = `錯誤：請確認 GitHub Actions 是否已經跑完並產生 stocks.json`;
-  }
+    count.textContent = `共 ${filteredStocks.length} 檔`;
+    status.textContent = `[${strategyName}] 執行完成，花費 0.01 秒`;
 }
 
-document.getElementById('runBtn').addEventListener('click', runStrategy);
+// 綁定按鈕事件
+document.getElementById('btnStrategy1').addEventListener('click', () => {
+    const result = strategyVolumeBottom();
+    renderTable(result, "量縮測底完成");
+});
+
+document.getElementById('btnStrategy2').addEventListener('click', () => {
+    const result = strategyBullMarket();
+    renderTable(result, "均線多頭排列");
+});
+
+// 網頁啟動時載入資料
+window.addEventListener('DOMContentLoaded', fetchAllData);

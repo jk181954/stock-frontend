@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台股選股網站</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <h1>台股選股網站</h1>
+      <p class="subtitle">策略：量縮測底完成（版本 A）</p>
+    </header>
+
+    <section class="card">
+      <h2>操作</h2>
+      <button id="runBtn">執行策略</button>
+      <p class="hint">按下後，系統會依照你設定的條件，從 stocks.json 篩出符合的股票。</p>
+    </section>
+
+    <section class="card">
+      <h2>策略條件</h2>
+      <ul class="rule-list">
+        <li>收盤價 > MA5</li>
+        <li>收盤價 > MA20</li>
+        <li>收盤價 > MA60</li>
+        <li>20 日最低收盤價 < MA20</li>
+        <li>成交量 > 500 張</li>
+        <li>收盤價 < MA200 × 1.4</li>
+        <li>MA200 連續 10 天上升</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="result-head">
+        <h2>選股結果</h2>
+        <span id="resultCount" class="badge">尚未執行</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>代號</th>
+              <th>名稱</th>
+              <th>收盤價</th>
+              <th>MA5</th>
+              <th>MA20</th>
+              <th>MA60</th>
+              <th>MA200</th>
+              <th>20日最低收盤</th>
+              <th>成交量</th>
+            </tr>
+          </thead>
+          <tbody id="resultBody">
+            <tr>
+              <td colspan="9" class="empty">尚未執行</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

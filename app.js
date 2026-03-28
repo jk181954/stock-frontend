@@ -27,9 +27,14 @@ async function runStrategy() {
       return;
     }
 
+    // 這裡加上了玩股網的超連結
     tbody.innerHTML = stocks.map(stock => `
       <tr>
-        <td>${stock.code}</td>
+        <td>
+          <a href="https://www.wantgoo.com/stock/${stock.code}/technical-chart" target="_blank" style="color: #0f766e; text-decoration: none; font-weight: bold;">
+            ${stock.code}
+          </a>
+        </td>
         <td>${stock.name}</td>
         <td>${stock.close}</td>
         <td>${stock.ma5}</td>

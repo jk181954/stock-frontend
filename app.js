@@ -4,14 +4,17 @@ async function runStrategy() {
   const tbody = document.getElementById('resultBody');
   const count = document.getElementById('resultCount');
   const status = document.getElementById('status');
+  const metaInfo = document.getElementById('metaInfo');
 
-  if (!tbody || !count || !status) {
-    alert('找不到必要的 HTML 元素，請檢查 resultBody、resultCount、status');
+  if (!tbody || !count || !status || !metaInfo) {
+    alert('找不到必要的 HTML 元素，請檢查 resultBody、resultCount、status、metaInfo');
     return;
   }
 
   status.textContent = '資料讀取中...';
   count.textContent = '執行中...';
+  metaInfo.textContent = '資料更新中...';
+
   tbody.innerHTML = `
     <tr>
       <td colspan="9" class="empty">讀取中...</td>
@@ -24,11 +27,14 @@ async function runStrategy() {
       throw new Error('伺服器回應錯誤：' + response.status);
     }
 
-    const stocks = await response.json();
+    const data = await response.json();
 
-    if (!Array.isArray(stocks)) {
-      throw new Error('API 回傳格式錯誤，不是陣列');
-    }
+    const stocks = data.stocks || [];
+    const updatedAt = data.updated_at || '未知';
+    const checkedCount = data.checked_count ?? 0;
+    const matchedCount = data.matched_count ?? 0;
+
+    metaInfo.textContent = `更新時間：${updatedAt}｜檢查 ${checkedCount} 檔｜符合 ${matchedCount} 檔`;
 
     if (stocks.length === 0) {
       tbody.innerHTML = `
@@ -66,6 +72,7 @@ async function runStrategy() {
     `;
     count.textContent = '錯誤';
     status.textContent = `錯誤：${error.message}`;
+    metaInfo.textContent = '無法取得資料';
   }
 }
 

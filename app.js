@@ -1,4 +1,5 @@
-const API_URL = 'https://stock-backend-5ljo.onrender.com/stocks';
+// 直接讀取目前 Repo 裡的 json 檔
+const API_URL = 'stocks.json';
 
 async function runStrategy() {
   const tbody = document.getElementById('resultBody');
@@ -6,83 +7,46 @@ async function runStrategy() {
   const status = document.getElementById('status');
   const metaInfo = document.getElementById('metaInfo');
 
-  if (!tbody || !count || !status || !metaInfo) {
-    alert('找不到必要的 HTML 元素，請檢查 resultBody、resultCount、status、metaInfo');
-    return;
-  }
-
-  status.textContent = '資料讀取中...';
-  count.textContent = '執行中...';
-  metaInfo.textContent = '資料更新中...';
-
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="9" class="empty">讀取中...</td>
-    </tr>
-  `;
+  status.textContent = '載入最新結果中...';
+  tbody.innerHTML = `<tr><td colspan="9" class="empty">讀取中...</td></tr>`;
 
   try {
-    const response = await fetch(API_URL);
-    if (!response.ok) {
-      throw new Error('伺服器回應錯誤：' + response.status);
-    }
+    // 給網址加上時間戳，防止瀏覽器讀到舊的暫存檔
+    const response = await fetch(API_URL + "?t=" + new Date().getTime());
+    if (!response.ok) throw new Error('讀取 JSON 失敗');
 
     const data = await response.json();
-
     const stocks = data.stocks || [];
-    const updatedAt = data.updated_at || '未知';
-    const checkedCount = data.checked_count ?? 0;
-    const matchedCount = data.matched_count ?? 0;
-
-    metaInfo.textContent = `更新時間：${updatedAt}｜檢查 ${checkedCount} 檔｜符合 ${matchedCount} 檔`;
+    
+    metaInfo.textContent = `更新時間：${data.updated_at}｜掃描 ${data.checked_count} 檔｜符合 ${data.matched_count} 檔`;
 
     if (stocks.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="9" class="empty">沒有符合條件的股票</td>
-        </tr>
-      `;
+      tbody.innerHTML = `<tr><td colspan="9" class="empty">今日無符合條件的股票</td></tr>`;
       count.textContent = '0 檔';
-      status.textContent = '讀取完成';
+      status.textContent = '載入完成';
       return;
     }
 
     tbody.innerHTML = stocks.map(stock => `
       <tr>
-        <td>${stock.code ?? ''}</td>
-        <td>${stock.name ?? ''}</td>
-        <td>${stock.close ?? ''}</td>
-        <td>${stock.ma5 ?? ''}</td>
-        <td>${stock.ma20 ?? ''}</td>
-        <td>${stock.ma60 ?? ''}</td>
-        <td>${stock.ma200 ?? ''}</td>
-        <td>${stock.lowestClose20 ?? ''}</td>
-        <td>${stock.volume ?? ''}</td>
+        <td>${stock.code}</td>
+        <td>${stock.name}</td>
+        <td>${stock.close}</td>
+        <td>${stock.ma5}</td>
+        <td>${stock.ma20}</td>
+        <td>${stock.ma60}</td>
+        <td>${stock.ma200}</td>
+        <td>${stock.lowestClose20}</td>
+        <td>${stock.volume}</td>
       </tr>
     `).join('');
 
     count.textContent = `共 ${stocks.length} 檔`;
-    status.textContent = '讀取完成';
+    status.textContent = '載入完成';
   } catch (error) {
-    console.error(error);
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="9" class="empty">讀取失敗</td>
-      </tr>
-    `;
-    count.textContent = '錯誤';
-    status.textContent = `錯誤：${error.message}`;
-    metaInfo.textContent = '無法取得資料';
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">讀取失敗</td></tr>`;
+    status.textContent = `錯誤：請確認 GitHub Actions 是否已經跑完並產生 stocks.json`;
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  const runBtn = document.getElementById('runBtn');
-
-  if (!runBtn) {
-    console.error('找不到 runBtn');
-    return;
-  }
-
-  runBtn.addEventListener('click', runStrategy);
-});
+document.getElementById('runBtn').addEventListener('click', runStrategy);

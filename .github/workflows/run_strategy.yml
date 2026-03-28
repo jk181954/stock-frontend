@@ -2,12 +2,11 @@ name: Daily Stock Scanner
 
 on:
   schedule:
-    # 這是 UTC 時間，08:30 等於台灣時間 16:30 (台股收盤後)
     - cron: '30 8 * * 1-5' 
-  workflow_dispatch: # 允許你手動按按鈕測試
+  workflow_dispatch: 
 
 permissions:
-  contents: write # 允許腳本把 json 寫回 Repo
+  contents: write
 
 jobs:
   build:
@@ -26,6 +25,9 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Python script
+        # 加上這行，強迫 Python 立刻把 print 吐出來
+        env:
+          PYTHONUNBUFFERED: "1"
         run: python update_stocks.py
 
       - name: Commit and push changes
@@ -33,5 +35,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add all_stocks_data.json
-          # 如果資料有更新就 commit，沒更新就不做
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update all_stocks_data.json" && git push)

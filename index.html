@@ -196,7 +196,7 @@
                 <th class="hide-on-mobile">20MA</th>
                 <th class="hide-on-mobile">60MA</th>
                 <th class="hide-on-mobile">200MA</th>
-                <th>結果</th>
+                <th>200MA連揚</th>
             </tr>
         </thead>
         <tbody id="table-body">
@@ -305,10 +305,10 @@
                     const marketClass = stock.market === '上市' ? 'badge-twse' : 'badge-tpex';
                     const tr = document.createElement('tr');
                     
-                    // 這裡加入了玩股網的超連結
+                    // 這裡改為直連玩股網的「技術線圖」頁面
                     tr.innerHTML = `
                         <td>
-                            <a href="https://www.wantgoo.com/stock/${stock.code}" target="_blank" style="color:#0d6efd; text-decoration:none; font-weight:bold;">
+                            <a href="https://www.wantgoo.com/stock/${stock.code}/technical-chart" target="_blank" style="color:#0d6efd; text-decoration:none; font-weight:bold;">
                                 ${stock.code}
                             </a>
                         </td>

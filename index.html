@@ -62,6 +62,7 @@
     </div>
 
     <div class="info-panel">
+        <div style="margin-bottom: 8px;">總計掃描市場上：<span id="total-scanned" style="color:#1a237e; font-weight:bold;">0</span> 檔股票</div>
         <div>目前符合 [<span id="current-strategy-name">1. 量縮測底完成</span>] 的股票總數：<span id="stock-count" style="color:#d32f2f; font-weight:bold; font-size:20px;">0</span> 檔</div>
         <div id="update-time" class="update-time">資料更新時間：載入中...</div>
     </div>
@@ -151,6 +152,13 @@
                 allStocksData = data.stocks;
                 document.getElementById('update-time').innerText = '資料更新時間：' + data.updated_at;
                 
+                // === 顯示總掃描檔數 ===
+                if (data.total_valid_stocks) {
+                    document.getElementById('total-scanned').innerText = data.total_valid_stocks;
+                } else {
+                    document.getElementById('total-scanned').innerText = allStocksData.length;
+                }
+                
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('stock-table').style.display = 'table';
                 
@@ -184,21 +192,20 @@
                     );
                 } 
                 else if (currentStrategy === 2) {
-                    // 為了避免舊資料報錯，先檢查新欄位是否存在
                     if (stock.k_value !== undefined) {
                         isMatch = (
-                            stock.close > stock.ma60 &&                           // 1. 收盤價 > 60MA
-                            stock.ma20 > stock.ma20_yesterday &&                  // 2. 20MA > 昨日20MA
-                            stock.has_vol_burst_10d === true &&                   // 3. 近10日有大於20均量2倍
-                            stock.has_price_burst_10d === true &&                 // 4. 近10日有單日漲幅>5%
-                            stock.close < stock.highestClose5 &&                  // 5. 收盤價 < 近5日最高價
-                            stock.close > stock.ma20 &&                           // 6. 收盤價 > 20MA
-                            stock.bias20 < 3.0 &&                                 // 7. 乖離率 < 3%
-                            stock.volume < stock.vol_ma5 &&                       // 8. 成交量 < 5日均量
-                            stock.volume < (stock.max_vol_10d * 0.5) &&           // 9. 成交量 < 近10日最大量的50%
-                            stock.k_value < 60                                    // 10. K值 < 60
+                            stock.close > stock.ma60 &&                           
+                            stock.ma20 > stock.ma20_yesterday &&                  
+                            stock.has_vol_burst_10d === true &&                   
+                            stock.has_price_burst_10d === true &&                 
+                            stock.close < stock.highestClose5 &&                  
+                            stock.close > stock.ma20 &&                           
+                            stock.bias20 < 3.0 &&                                 
+                            stock.volume < stock.vol_ma5 &&                       
+                            stock.volume < (stock.max_vol_10d * 0.5) &&           
+                            stock.k_value < 60                                    
                         );
-                        lastColValue = `K: ${stock.k_value}`; // 策略2 最後一欄顯示 K 值
+                        lastColValue = `K: ${stock.k_value}`; 
                     }
                 }
 

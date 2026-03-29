@@ -1,38 +1,6 @@
-name: Daily Stock Scanner
-
-on:
-  schedule:
-    - cron: '30 8 * * 1-5' 
-  workflow_dispatch: 
-
-permissions:
-  contents: write
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run Python script
-        # 加上這行，強迫 Python 立刻把 print 吐出來
-        env:
-          PYTHONUNBUFFERED: "1"
-        run: python update_stocks.py
-
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add all_stocks_data.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update all_stocks_data.json" && git push)
+          git add all_stocks_data.json historical_prices.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Daily update stock prices and indicators" && git push)

@@ -5,158 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台股技術面選股系統</title>
     <style>
-        body {
-            font-family: "Microsoft JhengHei", Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        h1 {
-            text-align: center;
-            color: #1a237e;
-        }
-
-        /* 上方大按鈕區 (前往籌碼 / 策略說明) */
-        .top-actions {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .btn-link {
-            padding: 10px 20px;
-            background-color: #1a237e;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background-color: #f0f2f5; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; color: #1a237e; }
+        .top-actions { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+        .btn-link { padding: 10px 20px; background-color: #1a237e; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; text-decoration: none; transition: all 0.2s; }
         .btn-link:hover { background-color: #0d47a1; }
         .btn-green { background-color: #198754; }
         .btn-green:hover { background-color: #157347; }
-
-        /* 策略選擇標籤區 (Tabs) */
-        .strategy-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-            justify-content: center;
-        }
-
-        .tab-btn {
-            padding: 10px 15px;
-            background-color: #e0e0e0;
-            color: #555;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .tab-btn.active {
-            background-color: #d32f2f;
-            color: white;
-            box-shadow: 0 2px 4px rgba(211,47,47,0.3);
-        }
-
-        .tab-btn:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        /* 隱藏的說明區塊 */
-        .explanation-box {
-            background-color: #ffffff;
-            border-left: 5px solid #198754;
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            display: none;
-            animation: fadeIn 0.3s;
-        }
-
+        .strategy-tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; justify-content: center; }
+        .tab-btn { padding: 10px 15px; background-color: #e0e0e0; color: #555; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .tab-btn.active { background-color: #d32f2f; color: white; box-shadow: 0 2px 4px rgba(211,47,47,0.3); }
+        .explanation-box { background-color: #ffffff; border-left: 5px solid #198754; border-radius: 6px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: none; animation: fadeIn 0.3s; }
         .explanation-box h3 { margin-top: 0; color: #198754; }
         .explanation-box ul { margin-bottom: 0; line-height: 1.6; }
-
-        /* 資訊面板與表格 */
-        .info-panel {
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            text-align: center;
-            font-size: 16px;
-        }
-
+        .info-panel { background-color: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; font-size: 16px; }
         .update-time { color: #666; font-size: 14px; margin-top: 5px; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 12px 10px;
-            text-align: center;
-            border-bottom: 1px solid #ddd;
-        }
-
+        table { width: 100%; border-collapse: collapse; background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #ddd; }
         th { background-color: #1a237e; color: white; }
         tr:hover { background-color: #f5f5f5; }
         .pass { color: #d32f2f; font-weight: bold; }
-        
-        .market-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
-        }
+        .market-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; }
         .badge-twse { background-color: #0288d1; }
         .badge-tpex { background-color: #f57c00; }
         .loading { text-align: center; font-size: 18px; color: #666; padding: 40px; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-width: 768px) {
-            th, td { padding: 8px 5px; font-size: 14px; }
-            .hide-on-mobile { display: none; }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) { th, td { padding: 8px 5px; font-size: 14px; } .hide-on-mobile { display: none; } }
     </style>
 </head>
 <body>
 
     <h1>📈 台股技術面選股系統</h1>
 
-    <!-- 頂部按鈕 -->
     <div class="top-actions">
         <a href="https://jk181954.github.io/Data/" target="_blank" class="btn-link">📊 前往台股籌碼</a>
         <button onclick="toggleExplanation()" class="btn-link btn-green">📝 策略條件說明</button>
     </div>
 
-    <!-- 策略說明區塊 -->
     <div id="strategy-explanation" class="explanation-box">
         <h3 id="exp-title">💡 策略 1：量縮測底完成 說明</h3>
         <ul id="exp-content">
@@ -168,10 +53,9 @@
         </ul>
     </div>
 
-    <!-- 策略切換按鈕 -->
     <div class="strategy-tabs">
         <button class="tab-btn active" onclick="switchStrategy(1, this)">1. 量縮測底完成</button>
-        <button class="tab-btn" onclick="switchStrategy(2, this)">2. 待更新</button>
+        <button class="tab-btn" onclick="switchStrategy(2, this)">2. 空轉多拉回</button>
         <button class="tab-btn" onclick="switchStrategy(3, this)">3. 待更新</button>
         <button class="tab-btn" onclick="switchStrategy(4, this)">4. 待更新</button>
         <button class="tab-btn" onclick="switchStrategy(5, this)">5. 待更新</button>
@@ -196,11 +80,10 @@
                 <th class="hide-on-mobile">20MA</th>
                 <th class="hide-on-mobile">60MA</th>
                 <th class="hide-on-mobile">200MA</th>
-                <th>200MA連揚</th>
+                <th id="dynamic-col">200MA連揚</th>
             </tr>
         </thead>
         <tbody id="table-body">
-            <!-- JavaScript 填入資料 -->
         </tbody>
     </table>
 
@@ -208,24 +91,19 @@
         let allStocksData = [];
         let currentStrategy = 1;
 
-        // 控制說明框的開關
         function toggleExplanation() {
             const box = document.getElementById("strategy-explanation");
             box.style.display = (box.style.display === "none" || box.style.display === "") ? "block" : "none";
         }
 
-        // 切換策略
         function switchStrategy(strategyId, btnElement) {
             currentStrategy = strategyId;
-            
-            // 更新按鈕外觀
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             btnElement.classList.add('active');
             
-            // 更新面板標題與說明文字
             const strategyNames = {
                 1: "1. 量縮測底完成",
-                2: "2. 待更新",
+                2: "2. 空轉多拉回",
                 3: "3. 待更新",
                 4: "4. 待更新",
                 5: "5. 待更新"
@@ -234,6 +112,7 @@
             
             const expTitle = document.getElementById('exp-title');
             const expContent = document.getElementById('exp-content');
+            const dynamicCol = document.getElementById('dynamic-col');
             
             if (strategyId === 1) {
                 expTitle.innerText = "💡 策略 1：量縮測底完成 說明";
@@ -243,19 +122,29 @@
                     <li>成交張數 > 500 張</li>
                     <li>收盤價 < 200日均線 × 1.4 (限制乖離)</li>
                     <li>200日均線 (年線) 連續 10 日上升</li>`;
+                dynamicCol.innerText = "200MA連揚";
+            } else if (strategyId === 2) {
+                expTitle.innerText = "💡 策略 2：空轉多拉回 說明";
+                expContent.innerHTML = `
+                    <li>1. 今日收盤價 > 60日均線 & 20日均線</li>
+                    <li>2. 20日均線 > 昨日20日均線 (月線翻揚)</li>
+                    <li>3. 近10日內至少1日出量 (大於20日均量2倍) 且至少1日漲幅 > 5%</li>
+                    <li>4. 今日收盤價 < 近5日最高價 (代表有拉回)</li>
+                    <li>5. 今日收盤價距20日均線乖離率 < 3%</li>
+                    <li>6. 今日成交量 < 5日均量 & < 近10日最大量的 50% (量縮)</li>
+                    <li>7. KD 的 K 值 < 60</li>`;
+                dynamicCol.innerText = "KD指標(K)";
             } else {
                 expTitle.innerText = `💡 策略 ${strategyId}：待更新`;
                 expContent.innerHTML = `<li>此策略尚未開放，敬請期待。</li>`;
+                dynamicCol.innerText = "備註";
             }
 
-            // 重新渲染表格
             renderTable();
         }
 
-        // 讀取 JSON 資料
         async function fetchData() {
             try {
-                // 加上時間戳防止瀏覽器快取舊資料
                 const response = await fetch('all_stocks_data.json?t=' + new Date().getTime());
                 const data = await response.json();
                 
@@ -269,12 +158,11 @@
 
             } catch (error) {
                 console.error('讀取資料失敗:', error);
-                document.getElementById('loading').innerText = '資料載入失敗，請確認 all_stocks_data.json 是否已產生。';
+                document.getElementById('loading').innerText = '資料載入失敗，請確認是否已至 GitHub Actions 重新執行抓取。';
                 document.getElementById('loading').style.color = 'red';
             }
         }
 
-        // 根據當前策略渲染表格
         function renderTable() {
             const tableBody = document.getElementById('table-body');
             tableBody.innerHTML = '';
@@ -282,22 +170,36 @@
 
             allStocksData.forEach(stock => {
                 let isMatch = false;
+                let lastColValue = "符合";
 
                 if (currentStrategy === 1) {
-                    // === 策略 1：量縮測底完成 (XQ 邏輯) ===
                     isMatch = (
                         stock.close > stock.ma5 &&
                         stock.close > stock.ma20 &&
                         stock.close > stock.ma60 &&
-                        stock.lowestClose20 < stock.ma20 && // 測底：近20日低點曾跌破當前 20MA
-                        stock.volume > 500 &&               // 成交張數 > 500
-                        stock.close < (stock.ma200 * 1.4) &&// 乖離率限制
-                        stock.ma200_up_10days === true      // 200MA連10揚
+                        stock.lowestClose20 < stock.ma20 &&
+                        stock.volume > 500 &&
+                        stock.close < (stock.ma200 * 1.4) &&
+                        stock.ma200_up_10days === true
                     );
                 } 
-                else {
-                    // 策略 2~5 待更新
-                    isMatch = false;
+                else if (currentStrategy === 2) {
+                    // 為了避免舊資料報錯，先檢查新欄位是否存在
+                    if (stock.k_value !== undefined) {
+                        isMatch = (
+                            stock.close > stock.ma60 &&                           // 1. 收盤價 > 60MA
+                            stock.ma20 > stock.ma20_yesterday &&                  // 2. 20MA > 昨日20MA
+                            stock.has_vol_burst_10d === true &&                   // 3. 近10日有大於20均量2倍
+                            stock.has_price_burst_10d === true &&                 // 4. 近10日有單日漲幅>5%
+                            stock.close < stock.highestClose5 &&                  // 5. 收盤價 < 近5日最高價
+                            stock.close > stock.ma20 &&                           // 6. 收盤價 > 20MA
+                            stock.bias20 < 3.0 &&                                 // 7. 乖離率 < 3%
+                            stock.volume < stock.vol_ma5 &&                       // 8. 成交量 < 5日均量
+                            stock.volume < (stock.max_vol_10d * 0.5) &&           // 9. 成交量 < 近10日最大量的50%
+                            stock.k_value < 60                                    // 10. K值 < 60
+                        );
+                        lastColValue = `K: ${stock.k_value}`; // 策略2 最後一欄顯示 K 值
+                    }
                 }
 
                 if (isMatch) {
@@ -305,7 +207,6 @@
                     const marketClass = stock.market === '上市' ? 'badge-twse' : 'badge-tpex';
                     const tr = document.createElement('tr');
                     
-                    // 這裡改為直連玩股網的「技術線圖」頁面
                     tr.innerHTML = `
                         <td>
                             <a href="https://www.wantgoo.com/stock/${stock.code}/technical-chart" target="_blank" style="color:#0d6efd; text-decoration:none; font-weight:bold;">
@@ -320,7 +221,7 @@
                         <td class="hide-on-mobile">${stock.ma20}</td>
                         <td class="hide-on-mobile">${stock.ma60}</td>
                         <td class="hide-on-mobile">${stock.ma200}</td>
-                        <td class="pass">符合</td>
+                        <td class="pass">${lastColValue}</td>
                     `;
                     tableBody.appendChild(tr);
                 }
@@ -328,14 +229,13 @@
 
             document.getElementById('stock-count').innerText = count;
             
-            if (count === 0 && currentStrategy !== 1) {
+            if (count === 0 && currentStrategy > 2) {
                 tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px; color:#666;">策略待更新...</td></tr>';
-            } else if (count === 0 && currentStrategy === 1) {
-                tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px; color:#666;">今日無符合條件之個股</td></tr>';
+            } else if (count === 0 && (currentStrategy === 1 || currentStrategy === 2)) {
+                tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 20px; color:#666;">今日無符合此策略條件之個股</td></tr>';
             }
         }
 
-        // 網頁載入完成後自動執行
         window.onload = fetchData;
     </script>
 </body>

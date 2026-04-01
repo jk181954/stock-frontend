@@ -2,7 +2,7 @@ name: Daily Stock Scanner (V2)
 
 on:
   schedule:
-    - cron: '33 9 * * 1-5'  # UTC 09:30 = 台灣時間下午 17:30
+    - cron: '33 9 * * 1-5'  # UTC 09:33 = 台灣時間下午 17:33
   workflow_dispatch:  # 手動按鈕
 
 permissions:
@@ -27,6 +27,7 @@ jobs:
       - name: Run Python script (極速增量版)
         env:
           PYTHONUNBUFFERED: "1"
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
         run: python update_stocks.py
 
       - name: Commit and push changes

@@ -9,7 +9,6 @@ import pytz
 DB_FILE = "historical_prices.json"
 OUTPUT_FILE = "all_stocks_data.json"
 FINMIND_TOKEN = os.getenv("FINMIND_TOKEN", "")
-DEBUG_CODES = {"5243", "6024", "1337"}
 
 
 def roc_to_ad_date(roc_date_str):
@@ -31,6 +30,14 @@ def is_valid_number_string(v):
         return True
     except:
         return False
+
+
+def get_target_date(now_dt):
+    # 防呆：凌晨或上午手動執行時，目標資料日視為昨天；
+    # 正式 17:33 排程仍會是當天
+    if now_dt.hour < 12:
+        return (now_dt - timedelta(days=1)).strftime("%Y-%m-%d")
+    return now_dt.strftime("%Y-%m-%d")
 
 
 def get_twse_quotes():
@@ -88,7 +95,6 @@ def get_tpex_quotes():
 
 def get_stock_from_finmind(stock_id, start_date, end_date):
     if not FINMIND_TOKEN:
-        print(f"{stock_id} FinMind skipped: FINMIND_TOKEN 未設定")
         return None
     try:
         url = "https://api.finmindtrade.com/api/v4/data"
@@ -104,24 +110,20 @@ def get_stock_from_finmind(stock_id, start_date, end_date):
         payload = r.json()
         rows = payload.get("data", [])
         if not rows:
-            print(f"{stock_id} FinMind 回傳空資料")
             return None
 
         df = pd.DataFrame(rows)
         if df.empty:
-            print(f"{stock_id} FinMind DataFrame 為空")
             return None
 
         df = df.sort_values("date")
         last_row = df.iloc[-1]
-        result = {
+        return {
             "date": str(last_row["date"]),
             "close": float(last_row["close"]),
             "volume": float(last_row["Trading_Volume"]) / 1000,
             "source": "FinMind"
         }
-        print(f"{stock_id} FinMind 最新資料 = {result}")
-        return result
     except Exception as e:
         print(f"FinMind 補資料失敗 {stock_id}: {e}")
         return None
@@ -185,9 +187,7 @@ def upsert_history(info, quote):
 
 
 def main():
-    print("=== 開始每日極速增量更新（DEBUG版）===")
-    print(f"FINMIND_TOKEN 是否存在: {'YES' if FINMIND_TOKEN else 'NO'}")
-    print(f"DEBUG 股票: {sorted(list(DEBUG_CODES))}")
+    print("=== 開始每日極速增量更新 ===")
 
     if not os.path.exists(DB_FILE):
         print(f"找不到 {DB_FILE}，請先上傳歷史資料庫！")
@@ -199,6 +199,7 @@ def main():
     tw_tz = pytz.timezone("Asia/Taipei")
     taipei_now = datetime.now(tz=tw_tz)
     taipei_today = taipei_now.strftime("%Y-%m-%d")
+    target_date = get_target_date(taipei_now)
     fallback_start = (taipei_now - timedelta(days=7)).strftime("%Y-%m-%d")
 
     twse_quotes, twse_api_date = get_twse_quotes()
@@ -208,11 +209,14 @@ def main():
     today_quotes.update(twse_quotes)
     today_quotes.update(tpex_quotes)
 
-    print(f"台北今天日期: {taipei_today}")
-    print(f"TWSE API 資料日期: {twse_api_date}")
+    if not today_quotes and not FINMIND_TOKEN:
+        print("今日無資料且未設定 FINMIND_TOKEN，結束更新。")
+        return
 
-    for dc in sorted(list(DEBUG_CODES)):
-        print(f"主來源 {dc} = {today_quotes.get(dc)}")
+    print(f"台北現在時間: {taipei_now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"日曆今天: {taipei_today}")
+    print(f"目標資料日: {target_date}")
+    print(f"TWSE API 資料日期: {twse_api_date}")
 
     updated_count = 0
     fallback_count = 0
@@ -223,36 +227,16 @@ def main():
         quote = today_quotes.get(code)
         use_finmind = False
 
-        if code in DEBUG_CODES:
-            print(f"\n--- DEBUG {code} ---")
-            print(f"history 最後一筆 = {info.get('history', [])[-1] if info.get('history') else None}")
-            print(f"主來源 quote = {quote}")
-
         if quote is None:
             use_finmind = True
-            if code in DEBUG_CODES:
-                print("原因: 主來源沒有這檔，準備查 FinMind")
-        elif quote.get("date") != taipei_today:
+        elif quote.get("date") != target_date:
             use_finmind = True
-            if code in DEBUG_CODES:
-                print(f"原因: 主來源日期不是今天 ({quote.get('date')} != {taipei_today})，準備查 FinMind")
-        else:
-            if code in DEBUG_CODES:
-                print("主來源已是今天資料，不查 FinMind")
 
         if use_finmind:
-            finmind_quote = get_stock_from_finmind(code, fallback_start, taipei_today)
-            if code in DEBUG_CODES:
-                print(f"FinMind 回傳 = {finmind_quote}")
-
-            if finmind_quote and finmind_quote.get("date") == taipei_today:
+            finmind_quote = get_stock_from_finmind(code, fallback_start, target_date)
+            if finmind_quote and finmind_quote.get("date") == target_date:
                 quote = finmind_quote
                 fallback_count += 1
-                if code in DEBUG_CODES:
-                    print("採用 FinMind 覆蓋主來源")
-            else:
-                if code in DEBUG_CODES:
-                    print("FinMind 無今天資料，保留原 quote")
 
         if quote:
             upsert_history(info, quote)
@@ -261,13 +245,6 @@ def main():
             src = quote.get("source", "unknown")
             if src in source_stats:
                 source_stats[src] += 1
-
-            if code in DEBUG_CODES:
-                print(f"最終採用 quote = {quote}")
-                print(f"更新後 history 最後一筆 = {info.get('history', [])[-1] if info.get('history') else None}")
-        else:
-            if code in DEBUG_CODES:
-                print("最終沒有可用 quote")
 
     all_stocks_result = []
 
@@ -349,6 +326,7 @@ def main():
     output_data = {
         "updated_at": taipei_now.strftime("%Y-%m-%d %H:%M:%S CST"),
         "data_date": actual_data_date,
+        "target_date": target_date,
         "today_updated_count": updated_count,
         "fallback_updated_count": fallback_count,
         "source_stats": source_stats,
@@ -359,10 +337,11 @@ def main():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
-    print("\n=== 更新完成 ===")
+    print("=== 更新完成 ===")
     print(f"更新股票數: {updated_count}")
     print(f"FinMind 備援補到: {fallback_count}")
     print(f"來源統計: {source_stats}")
+    print(f"目標資料日: {target_date}")
     print(f"實際資料日期: {actual_data_date}")
     print(f"成功儲存 {len(all_stocks_result)} 檔符合天數的股票指標！")
 

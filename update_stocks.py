@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import pytz
 
 DB_FILE = "historical_prices.json"
 OUTPUT_FILE = "all_stocks_data.json"
@@ -77,7 +78,7 @@ def main():
         print("今日無資料或 API 異常，結束更新。")
         return
         
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_str = datetime.now(tz=pytz.timezone("Asia/Taipei")).strftime("%Y-%m-%d")
     all_stocks_result = []
     updated_count = 0
 
@@ -165,8 +166,11 @@ def main():
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(db, f, ensure_ascii=False)
 
+    tw_tz = pytz.timezone("Asia/Taipei")
+    tw_now = datetime.now(tz=tw_tz)
+
     output_data = {
-        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_at": tw_now.strftime("%Y-%m-%d %H:%M:%S CST"),
         "total_valid_stocks": len(all_stocks_result),
         "stocks": all_stocks_result
     }

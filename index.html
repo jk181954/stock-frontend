@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -68,7 +67,10 @@
     <div class="info-panel">
         <div style="margin-bottom: 8px;">總計掃描市場上：<span id="total-scanned" style="color:#1a237e; font-weight:bold;">0</span> 檔股票</div>
         <div>目前符合 [<span id="current-strategy-name">1. 量縮測底完成</span>] 的股票總數：<span id="stock-count" style="color:#d32f2f; font-weight:bold; font-size:20px;">0</span> 檔</div>
-        <div id="update-time" class="update-time">資料更新時間：載入中...</div>
+        
+    <div id="update-time" class="update-time">頁面更新時間：載入中...</div>
+    <div>資料為 <span id="dataDate">載入中...</span> 交易日</div>
+    
         <div id="data-date-info" class="data-date-warning"></div>
     </div>
 
@@ -160,7 +162,7 @@
                     <li>7. KD 的 K 值 < 60</li>`;
                 dynamicCol.innerText = "KD指標(K)";
             } else {
-                expTitle.innerText = `💡 策略 ${strategyId}：待更新`;
+                expTitle.innerText = `💡 策略 ${{strategyId}}：待更新`;
                 expContent.innerHTML = `<li>此策略尚未開放，敬請期待。</li>`;
                 dynamicCol.innerText = "備註";
             }
@@ -174,7 +176,8 @@
                 const data = await response.json();
 
                 allStocksData = data.stocks;
-                document.getElementById('update-time').innerText = '最後更新：' + data.updated_at;
+                document.getElementById('update-time').innerText = '頁面更新時間：' + data.updated_at;
+    document.getElementById('dataDate').textContent = data.data_date || '未知';
 
                 // 新增：顯示資料日期與提醒
                 showDataDateWarning(data.data_date);
@@ -227,7 +230,7 @@
                             stock.volume < (stock.max_vol_10d * 0.5) &&           
                             stock.k_value < 60                                    
                         );
-                        lastColValue = `K: ${stock.k_value}`; 
+                        lastColValue = `K: ${{stock.k_value}}`; 
                     }
                 }
 
@@ -238,19 +241,19 @@
 
                     tr.innerHTML = `
                         <td>
-                            <a href="https://www.wantgoo.com/stock/${stock.code}/technical-chart" target="_blank" style="color:#0d6efd; text-decoration:none; font-weight:bold;">
-                                ${stock.code}
+                            <a href="https://www.wantgoo.com/stock/${{stock.code}}/technical-chart" target="_blank" style="color:#0d6efd; text-decoration:none; font-weight:bold;">
+                                ${{stock.code}}
                             </a>
                         </td>
-                        <td style="font-weight:bold;">${stock.name}</td>
-                        <td class="hide-on-mobile"><span class="market-badge ${marketClass}">${stock.market}</span></td>
-                        <td style="color:#d32f2f; font-weight:bold;">${stock.close}</td>
-                        <td>${stock.volume}</td>
-                        <td class="hide-on-mobile">${stock.ma5}</td>
-                        <td class="hide-on-mobile">${stock.ma20}</td>
-                        <td class="hide-on-mobile">${stock.ma60}</td>
-                        <td class="hide-on-mobile">${stock.ma200}</td>
-                        <td class="pass">${lastColValue}</td>
+                        <td style="font-weight:bold;">${{stock.name}}</td>
+                        <td class="hide-on-mobile"><span class="market-badge ${{marketClass}}">${{stock.market}}</span></td>
+                        <td style="color:#d32f2f; font-weight:bold;">${{stock.close}}</td>
+                        <td>${{stock.volume}}</td>
+                        <td class="hide-on-mobile">${{stock.ma5}}</td>
+                        <td class="hide-on-mobile">${{stock.ma20}}</td>
+                        <td class="hide-on-mobile">${{stock.ma60}}</td>
+                        <td class="hide-on-mobile">${{stock.ma200}}</td>
+                        <td class="pass">${{lastColValue}}</td>
                     `;
                     tableBody.appendChild(tr);
                 }

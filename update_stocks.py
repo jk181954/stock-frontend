@@ -9,31 +9,37 @@ import pytz
 DB_FILE = "historical_prices.json"
 OUTPUT_FILE = "all_stocks_data.json"
 
+def parse_tpex_date(date_str):
+    """將 TPEX 民國日期 1150402 轉為西元 2026-04-02"""
+    date_str = str(date_str).strip()
+    if len(date_str) == 7 and date_str.isdigit():
+        year = int(date_str[:3]) + 1911   # 115 + 1911 = 2026
+        month = date_str[3:5]             # 04
+        day = date_str[5:7]               # 02
+        return f"{year}-{month}-{day}"
+    return None
+
 def get_today_quotes():
     today_data = {}
     tw_today = datetime.now(tz=pytz.timezone("Asia/Taipei")).strftime("%Y-%m-%d")
     actual_date = None
 
-    # ✅ 先抓 TPEX（有 Date 欄位），取得實際交易日
+    # ✅ 先抓 TPEX，取得實際交易日（Date 欄位格式：1150402）
     try:
         res = requests.get("https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes", timeout=15)
         for item in res.json():
             code = str(item.get("SecuritiesCompanyCode", "")).strip()
             close = str(item.get("Close", "")).replace(',', '')
             vol = str(item.get("TradingShares", "")).replace(',', '')
-            date_str = str(item.get("Date", "")).strip()  # 格式：115/04/02
+            date_str = str(item.get("Date", "")).strip()
             if close and vol and close.replace('.', '', 1).isdigit() and len(code) == 4:
                 today_data[code] = {"close": float(close), "volume": float(vol) / 1000}
-                # ✅ 取第一筆有效日期，民國轉西元
-                if actual_date is None and "/" in date_str:
-                    parts = date_str.split("/")
-                    if len(parts) == 3:
-                        year = int(parts[0]) + 1911
-                        actual_date = f"{year}-{parts[1].zfill(2)}-{parts[2].zfill(2)}"
+                if actual_date is None:
+                    actual_date = parse_tpex_date(date_str)
     except Exception as e:
         print(f"獲取上櫃今日行情失敗: {e}")
 
-    # 再抓 TWSE（無 Date 欄位，日期已從 TPEX 取得）
+    # 再抓 TWSE（無日期欄位）
     try:
         res = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL", timeout=15)
         for item in res.json():
@@ -45,7 +51,6 @@ def get_today_quotes():
     except Exception as e:
         print(f"獲取上市今日行情失敗: {e}")
 
-    # fallback：TPEX 也沒有日期時才用今天
     if actual_date is None:
         actual_date = tw_today
         print(f"⚠️ 無法從 API 取得交易日，使用程式執行日: {actual_date}")

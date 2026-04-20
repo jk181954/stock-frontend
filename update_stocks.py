@@ -41,16 +41,16 @@ def get_last_trading_date_from_twse():
     return None
 
 def get_today_quotes():
-    """三層來源：TPEX → TWSE afterTrading → TWSE openapi 備援"""
+    """四層來源：TPEX → MI_INDEX（主力）→ afterTrading 備援 → openapi 最終備援"""
     today_data = {}
     quote_dates = {}
     actual_date = None
     tw_today = datetime.now(tz=pytz.timezone("Asia/Taipei")).strftime("%Y-%m-%d")
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
     # ① TPEX 上櫃（重試機制）
     try:
         tpex_url = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         tpex_json = None
 
         for attempt in range(3):
@@ -86,57 +86,93 @@ def get_today_quotes():
     except Exception as e:
         print(f"TPEX 行情失敗: {e}")
 
-    # ② TWSE afterTrading 全市場收盤（收盤後即時更新）
+    # ② TWSE MI_INDEX 每日收盤行情（主力，一次抓全部 ~1350 檔，含正確日期）
+    twse_ok = False
     try:
         date_nodash = tw_today.replace("-", "")
-        url = f"https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=json&date={date_nodash}"
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        res = requests.get(url, headers=headers, timeout=20)
+        mi_url = (f"https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+                  f"?date={date_nodash}&type=ALLBUT0999&response=json")
+        res = requests.get(mi_url, headers=headers, timeout=20)
         data = res.json()
-        if data.get("stat") == "OK":
-            raw_date = data.get("date", "").strip()
-            parsed_twse = None
-            if len(raw_date) == 8:
-                parsed_twse = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
-            else:
-                parsed_twse = actual_date
-            count = 0
-            for row in data.get("data", []):
-                if len(row) < 8:
+        if data.get("stat") != "OK":
+            raise ValueError(f"MI_INDEX stat={data.get('stat')}")
+
+        raw_date = data.get("date", "").strip()
+        parsed_mi = (f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
+                     if len(raw_date) == 8 else None)
+
+        count = 0
+        for table in data.get("tables", []):
+            if "每日收盤行情" not in str(table.get("title", "")):
+                continue
+            for row in table.get("data", []):
+                if len(row) < 9:
                     continue
                 code = str(row[0]).strip()
-                close_raw = str(row[7]).replace(",", "").strip()
-                vol_raw = str(row[2]).replace(",", "").strip()
+                close_raw = str(row[8]).replace(",", "").strip()   # col[8] = 收盤價
+                vol_raw   = str(row[2]).replace(",", "").strip()   # col[2] = 成交股數
                 if len(code) == 4 and close_raw.replace(".", "", 1).isdigit() and vol_raw.isdigit():
                     today_data[code] = {"close": float(close_raw), "volume": float(vol_raw) / 1000}
-                    quote_dates[code] = parsed_twse
+                    quote_dates[code] = parsed_mi
                     count += 1
-            if parsed_twse and (actual_date is None or parsed_twse > actual_date):
-                actual_date = parsed_twse
-            print(f"TWSE afterTrading: {count} 檔（日期: {parsed_twse}）")
-        else:
-            print(f"TWSE afterTrading 未更新（stat={data.get('stat')}），改用 openapi 備援")
-            raise ValueError("TWSE afterTrading not ready")
+
+        if parsed_mi and (actual_date is None or parsed_mi > actual_date):
+            actual_date = parsed_mi
+        print(f"TWSE MI_INDEX: {count} 檔（日期: {parsed_mi}）")
+        twse_ok = True
     except Exception as e:
-        # ③ TWSE openapi 備援
+        print(f"TWSE MI_INDEX 失敗: {e}，改用備援...")
+
+    if not twse_ok:
+        # ③ TWSE afterTrading STOCK_DAY_ALL 備援
         try:
-            res = requests.get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL", timeout=15)
-            count = 0
-            for item in res.json():
-                code = str(item.get("Code", "")).strip()
-                close = str(item.get("ClosingPrice", "")).replace(",", "")
-                vol = str(item.get("TradeVolume", "")).replace(",", "")
-                date_str = str(item.get("Date", "")).strip()
-                if close and vol and close.replace(".", "", 1).isdigit() and len(code) == 4:
-                    parsed = parse_tpex_date(date_str)
-                    today_data[code] = {"close": float(close), "volume": float(vol) / 1000}
-                    quote_dates[code] = parsed
-                    if parsed and (actual_date is None or parsed > actual_date):
-                        actual_date = parsed
-                    count += 1
-            print(f"TWSE openapi 備援: {count} 檔")
+            date_nodash = tw_today.replace("-", "")
+            url = f"https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=json&date={date_nodash}"
+            res = requests.get(url, headers=headers, timeout=20)
+            data = res.json()
+            if data.get("stat") == "OK":
+                raw_date = data.get("date", "").strip()
+                parsed_twse = (f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
+                               if len(raw_date) == 8 else actual_date)
+                count = 0
+                for row in data.get("data", []):
+                    if len(row) < 8:
+                        continue
+                    code = str(row[0]).strip()
+                    close_raw = str(row[7]).replace(",", "").strip()
+                    vol_raw   = str(row[2]).replace(",", "").strip()
+                    if len(code) == 4 and close_raw.replace(".", "", 1).isdigit() and vol_raw.isdigit():
+                        today_data[code] = {"close": float(close_raw), "volume": float(vol_raw) / 1000}
+                        quote_dates[code] = parsed_twse
+                        count += 1
+                if parsed_twse and (actual_date is None or parsed_twse > actual_date):
+                    actual_date = parsed_twse
+                print(f"TWSE afterTrading 備援: {count} 檔（日期: {parsed_twse}）")
+                twse_ok = True
+            else:
+                raise ValueError(f"afterTrading stat={data.get('stat')}")
         except Exception as e2:
-            print(f"TWSE 備援失敗: {e2}")
+            # ④ TWSE openapi 最終備援
+            try:
+                res = requests.get(
+                    "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+                    headers=headers, timeout=15)
+                count = 0
+                for item in res.json():
+                    code = str(item.get("Code", "")).strip()
+                    close = str(item.get("ClosingPrice", "")).replace(",", "")
+                    vol   = str(item.get("TradeVolume", "")).replace(",", "")
+                    date_str = str(item.get("Date", "")).strip()
+                    if close and vol and close.replace(".", "", 1).isdigit() and len(code) == 4:
+                        parsed = parse_tpex_date(date_str)
+                        today_data[code] = {"close": float(close), "volume": float(vol) / 1000}
+                        quote_dates[code] = parsed
+                        if parsed and (actual_date is None or parsed > actual_date):
+                            actual_date = parsed
+                        count += 1
+                print(f"TWSE openapi 最終備援: {count} 檔")
+            except Exception as e3:
+                print(f"TWSE 所有備援失敗: {e3}")
 
     if actual_date is None:
         actual_date = tw_today
@@ -157,6 +193,29 @@ def clean_duplicate_entries(db, actual_data_date):
     return cleaned
 
 
+def fetch_finmind(code, start_date, end_date, token=""):
+    params = {"dataset": "TaiwanStockPrice", "data_id": code,
+              "start_date": start_date, "end_date": end_date}
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    try:
+        res = requests.get(FINMIND_API_URL, params=params, headers=headers, timeout=20)
+        data = res.json()
+        if data.get("status") == 402:
+            return "RATE_LIMIT"
+        if data.get("status") != 200:
+            return []
+        rows = []
+        for item in data.get("data", []):
+            dv, cv, vv = item.get("date"), item.get("close"), item.get("Trading_Volume")
+            if dv and cv is not None:
+                rows.append({"date": dv, "close": round(float(cv), 2),
+                             "volume": round(float(vv) / 1000, 2) if vv else 0.0})
+        return rows
+    except Exception as e:
+        print(f"  [{code}] FinMind 失敗: {e}")
+        return []
+
+
 def backfill_finmind(db, actual_data_date, token=""):
     stale = [code for code, info in db.items()
              if info.get("history") and info["history"][-1]["date"] < actual_data_date]
@@ -173,6 +232,10 @@ def backfill_finmind(db, actual_data_date, token=""):
         last_date = db[code]["history"][-1]["date"]
         start_dt = (datetime.strptime(last_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
         rows = fetch_finmind(code, start_dt, actual_data_date, token=token)
+
+        if rows == "RATE_LIMIT":
+            print(f"⚠️  FinMind 達到請求上限，剩餘 {len(stale)-i} 檔未補，明日繼續。")
+            break
 
         if rows:
             existing = {r["date"] for r in db[code]["history"]}
@@ -193,27 +256,6 @@ def backfill_finmind(db, actual_data_date, token=""):
 
     print(f"✅ FinMind 完成：補齊 {filled} 檔")
     return db
-
-
-def fetch_finmind(code, start_date, end_date, token=""):
-    params = {"dataset": "TaiwanStockPrice", "data_id": code,
-              "start_date": start_date, "end_date": end_date}
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
-    try:
-        res = requests.get(FINMIND_API_URL, params=params, headers=headers, timeout=20)
-        data = res.json()
-        if data.get("status") != 200:
-            return []
-        rows = []
-        for item in data.get("data", []):
-            dv, cv, vv = item.get("date"), item.get("close"), item.get("Trading_Volume")
-            if dv and cv is not None:
-                rows.append({"date": dv, "close": round(float(cv), 2),
-                             "volume": round(float(vv) / 1000, 2) if vv else 0.0})
-        return rows
-    except Exception as e:
-        print(f"  [{code}] FinMind 失敗: {e}")
-        return []
 
 
 def is_ma200_up_10days(ma200_list):
@@ -252,6 +294,8 @@ def main():
     if not today_quotes or actual_data_date is None:
         print("今日無資料或非交易日，結束。")
         return
+
+    print(f"實際交易日期: {actual_data_date}")
 
     # 清除重複寫入的錯誤資料
     already_updated = sum(1 for info in db.values()
